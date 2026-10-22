@@ -43,10 +43,9 @@ export function ProductsPage() {
       product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesCategory = 
-      // selectedCategory === "all" || product.category === selectedCategory;
-      product.category === "BeluPapeleria";
-      return matchesSearch && matchesCategory;
+    const matchesCategory =
+      selectedCategory === "all" || product.category === selectedCategory;
+    return matchesSearch && matchesCategory;
   });
 
   const handleAddToCart = (product: Product) => {
@@ -97,7 +96,7 @@ export function ProductsPage() {
             {/* Título e Info */}
             <div>
               <h1 className="text-3xl font-black text-gray-900 tracking-tight">
-                Marketplace BeluPapeleria
+                Marketplace FUNVAL
               </h1>
               <p className="text-gray-500 mt-1 text-sm font-medium">
                 Explora nuestra variedad de productos disponibles (
@@ -119,7 +118,7 @@ export function ProductsPage() {
               </div>
 
               {/* Selector Desplegable de Categorías (Select) */}
-              {/*
+
               <div className="relative w-full sm:w-56">
                 <select
                   value={selectedCategory}
@@ -139,7 +138,6 @@ export function ProductsPage() {
                   ))}
                 </select>
 
-                
                 <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-gray-400">
                   <svg
                     className="w-4 h-4"
@@ -156,7 +154,6 @@ export function ProductsPage() {
                   </svg>
                 </div>
               </div>
-              */}
             </div>
           </div>
         </div>
