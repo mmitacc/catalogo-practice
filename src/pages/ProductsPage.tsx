@@ -1,22 +1,51 @@
 import { useState, useEffect } from "react";
-import api from "../lib/axios";
+import { useSearchParams } from "react-router";
 import { ProductCard } from "../components/ProductCard";
 import type { Product } from "../types/Product";
+import { useTipoCambio } from "../hooks/useTipoCambio.ts";
+import { productosService } from "../services/productos.ts";
 
 export function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [hayMas, setHayMas] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Estados para Filtros y Búsqueda
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  // Api para tipo de cambio
+  const { solesPorDolar } = useTipoCambio();
+  console.log("solesPorDolar => ", solesPorDolar);
 
-  // Petición a la API con Axios
+  // Estados para Búsqueda (Texto plano local)
+  const [searchTerm, setSearchTerm] = useState<string>("");
+
+  // Constantes para paginados mediante URL con useSearchParams
+  const POR_PAGINA = 6;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pagina = Math.max(1, Number(searchParams.get("pagina")) || 1);
+  const categoria = searchParams.get("categoria") ?? "Todas";
+
+  // Funciones para cambiar de página y categoría actualizando la URL
+  const irAPagina = (nueva: number) => {
+    setSearchParams({ pagina: String(nueva), categoria });
+  };
+
+  const cambiarCategoria = (nueva: string) => {
+    setSearchParams({ pagina: "1", categoria: nueva });
+  };
+
+  // Petición a la API usando el servicio paginado
   const cargarProducts = () => {
-    api
-      .get("/products")
-      .then((res) => setProducts(res.data))
+    setLoading(true);
+    // Mapeamos "todas" de la URL al formato "Todas" esperado por tu servicio de backend
+    const categoriaFormateada = categoria === "Todas" ? "Todas" : categoria;
+
+    productosService
+      .getPagina(pagina, POR_PAGINA, categoriaFormateada)
+      .then((resultado) => {
+        setProducts(resultado.productos);
+        setHayMas(resultado.hayMas);
+        setError(null);
+      })
       .catch(() =>
         setError(
           "No se pudieron cargar los productos. Por favor, intenta de nuevo más tarde.",
@@ -25,27 +54,36 @@ export function ProductsPage() {
       .finally(() => setLoading(false));
   };
 
+  // El efecto se dispara cada vez que la página o categoría en la URL cambian
   useEffect(() => {
     cargarProducts();
+  }, [pagina, categoria]);
+
+  // Lista de categorías estáticas o predefinidas (ya que con paginación la API no te devolverá todas en la primera página)
+  const [allCategories, setAllCategories] = useState<string[]>(["todas"]);
+  useEffect(() => {
+    productosService
+      .getAll()
+      .then((todosLosProductos) => {
+        // Extraemos las categorías únicas conservando sus mayúsculas originales
+        const categoriasUnicas = new Set(
+          todosLosProductos
+            .map((p) => p.category)
+            .filter((cat): cat is string => !!cat),
+        );
+
+        // Guardamos "todas" junto a las categorías originales
+        setAllCategories(["todas", ...categoriasUnicas]);
+      })
+      .catch((err) => console.error("Error cargando categorías:", err));
   }, []);
 
-  // Extraer categorías únicas dinámicamente omitiendo valores nulos o vacíos
-  const categories = [
-    "all",
-    ...new Set(
-      products.map((p) => p.category).filter((cat): cat is string => !!cat), // Filtra null o undefined
-    ),
-  ];
-
-  // Lógica de Filtrado Combinado (Buscador + Selector de Categoría)
+  // Lógica de Filtrado Combinado (Ahora solo filtra localmente por buscador de texto, ya que la categoría viene filtrada del backend)
   const filteredProducts = products.filter((product) => {
-    const matchesSearch =
+    return (
       product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.description?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesCategory =
-      selectedCategory === "all" || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+      product.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
   });
 
   const handleAddToCart = (product: Product) => {
@@ -77,7 +115,7 @@ export function ProductsPage() {
           </h3>
           <p className="text-gray-500 text-sm mb-6">{error}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => cargarProducts()}
             className="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-indigo-700 transition"
           >
             Reintentar
@@ -118,21 +156,20 @@ export function ProductsPage() {
               </div>
 
               {/* Selector Desplegable de Categorías (Select) */}
-
               <div className="relative w-full sm:w-56">
                 <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  value={categoria}
+                  onChange={(e) => cambiarCategoria(e.target.value)}
                   className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer appearance-none capitalize"
                 >
-                  {categories.map((category) => (
+                  {allCategories.map((category) => (
                     <option
                       key={category}
                       value={category}
                       className="capitalize text-gray-700 font-medium"
                     >
-                      {category === "all"
-                        ? "📦 Todas las categorías"
+                      {category === "todas"
+                        ? "📦 todas las categorías"
                         : category.replace("-", " / ")}
                     </option>
                   ))}
@@ -166,15 +203,67 @@ export function ProductsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 justify-items-center">
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onAddToCart={handleAddToCart}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 justify-items-center">
+              {filteredProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onAddToCart={handleAddToCart}
+                  solesPorDolar={solesPorDolar}
+                />
+              ))}
+            </div>
+
+            {/* Controles de Paginación Estilizados */}
+            <div className="flex justify-center items-center gap-4 mt-12 bg-white px-6 py-4 rounded-2xl border border-gray-100 shadow-sm max-w-xs mx-auto">
+              <button
+                disabled={pagina === 1}
+                onClick={() => irAPagina(pagina - 1)}
+                className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all"
+                aria-label="Página anterior"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+              </button>
+
+              <span className="text-sm font-semibold text-gray-700 tracking-wide min-w-[70px] text-center">
+                Pág. {pagina}
+              </span>
+
+              <button
+                disabled={!hayMas}
+                onClick={() => irAPagina(pagina + 1)}
+                className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all"
+                aria-label="Página siguiente"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -1,19 +1,26 @@
-import React from "react";
+import React, { useState } from "react";
 import type { Product } from "../types/Product";
 
 interface ProductCardProps {
   product: Product;
   onAddToCart?: (product: Product) => void;
+  solesPorDolar: number | null;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onAddToCart,
+  solesPorDolar,
 }) => {
   const { name, description, price, stock, category, image_url } = product;
 
+  // Estado local para controlar la moneda activa: 'PEN' o 'USD'
+  const [currency, setCurrency] = useState<"PEN" | "USD">("PEN");
+
+  const precioSol = parseFloat(String(price));
+  const precioUsd = solesPorDolar ? precioSol / solesPorDolar : null;
+
   // Formatear el nombre de la categoría (ej. "Panaderia-galleta" -> "Panaderia / galleta")
-  // Si category es null o undefined, usará un texto por defecto como 'General'
   const formattedCategory = category ? category.replace("-", " / ") : "General";
 
   // Validar si hay stock disponible
@@ -27,9 +34,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           className={`w-full h-full object-cover transition-transform duration-500 hover:scale-105 ${
             isOutOfStock ? "grayscale opacity-75" : ""
           }`}
-          // Si image_url es null o no existe, usa una imagen por defecto
           src={image_url || "https://placehold.co"}
-          // Si name es null, evita romper el atributo alt usando un string vacío
           alt={name || "Producto"}
           loading="lazy"
         />
@@ -51,13 +56,58 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* Contenido de la Card */}
       <div className="p-5 flex flex-col flex-grow">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="text-lg font-bold text-gray-800 line-clamp-1">
+        {/* Cabecera Interna: Título y Precios Dinámicos */}
+        <div className="flex justify-between items-start gap-4 mb-3">
+          <h3
+            className="text-lg font-bold text-gray-800 line-clamp-2 flex-1"
+            title={name}
+          >
             {name}
           </h3>
-          <span className="text-xl font-black text-indigo-600 whitespace-nowrap">
-            S/. {parseFloat(price).toFixed(2)}
-          </span>
+
+          {/* Bloque de Moneda y Selector */}
+          <div className="flex flex-col items-end shrink-0 text-right min-w-[100px]">
+            {/* Monto Dinámico según la Moneda seleccionada */}
+            <div className="h-7 flex items-center justify-end">
+              {currency === "PEN" ? (
+                <span className="text-xl font-black text-indigo-600 whitespace-nowrap animate-fade-in">
+                  S/. {precioSol.toFixed(2)}
+                </span>
+              ) : (
+                <span className="text-xl font-black text-emerald-600 whitespace-nowrap animate-fade-in">
+                  ${precioUsd ? precioUsd.toFixed(2) : "0.00"} USD
+                </span>
+              )}
+            </div>
+
+            {/* Selector interactivo de moneda (Switch tipo Pill) */}
+            {precioUsd !== null && (
+              <div className="inline-flex rounded-lg p-0.5 bg-gray-100 mt-2 border border-gray-200/50">
+                <button
+                  type="button"
+                  onClick={() => setCurrency("PEN")}
+                  className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${
+                    currency === "PEN"
+                      ? "bg-white text-indigo-600 shadow-sm"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  S/.
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrency("USD")}
+                  className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${
+                    currency === "USD"
+                      ? "bg-white text-emerald-600 shadow-sm"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  USD
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <p className="text-gray-500 text-sm mb-4 line-clamp-2 flex-grow">
@@ -65,7 +115,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </p>
 
         {/* Info de Stock y Botón de Acción */}
-        <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between gap-4">
+        <div className="mt-auto pt-4 border-t border-gray-100 flex items-center justify-between gap-4">
           <div className="flex flex-col">
             <span className="text-xs text-gray-400 font-medium">
               Disponibles
@@ -82,7 +132,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             disabled={isOutOfStock}
             className={`flex-grow px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 text-center ${
               isOutOfStock
-                ? "bg-gray-150 text-gray-400 cursor-not-allowed"
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
                 : "bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 shadow-md shadow-indigo-100"
             }`}
           >
