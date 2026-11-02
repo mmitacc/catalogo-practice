@@ -4,16 +4,18 @@ import { ProductCard } from "../components/ProductCard";
 import type { Product } from "../types/Product";
 import { useTipoCambio } from "../hooks/useTipoCambio.ts";
 import { productosService } from "../services/productos.ts";
+import { useTheme } from "../context/ThemeContext.tsx";
 
 export function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [hayMas, setHayMas] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  // Toggle para Theme
+  const { theme, toggleTheme } = useTheme();
 
   // Api para tipo de cambio
   const { solesPorDolar } = useTipoCambio();
-  console.log("solesPorDolar => ", solesPorDolar);
 
   // Estados para Búsqueda (Texto plano local)
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -22,7 +24,7 @@ export function ProductsPage() {
   const POR_PAGINA = 6;
   const [searchParams, setSearchParams] = useSearchParams();
   const pagina = Math.max(1, Number(searchParams.get("pagina")) || 1);
-  const categoria = searchParams.get("categoria") ?? "Todas";
+  const categoria = searchParams.get("categoria") ?? "";
 
   // Funciones para cambiar de página y categoría actualizando la URL
   const irAPagina = (nueva: number) => {
@@ -37,7 +39,7 @@ export function ProductsPage() {
   const cargarProducts = () => {
     setLoading(true);
     // Mapeamos "todas" de la URL al formato "Todas" esperado por tu servicio de backend
-    const categoriaFormateada = categoria === "Todas" ? "Todas" : categoria;
+    const categoriaFormateada = categoria === "Todas" ? "" : categoria;
 
     productosService
       .getPagina(pagina, POR_PAGINA, categoriaFormateada)
@@ -73,7 +75,7 @@ export function ProductsPage() {
         );
 
         // Guardamos "todas" junto a las categorías originales
-        setAllCategories(["todas", ...categoriasUnicas]);
+        setAllCategories(["Todas", ...categoriasUnicas]);
       })
       .catch((err) => console.error("Error cargando categorías:", err));
   }, []);
@@ -126,49 +128,62 @@ export function ProductsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8">
+    /* 1. Cambiamos el fondo general de la página en modo oscuro: dark:bg-gray-950 */
+    <div className="min-h-screen bg-gray-50/50 dark:bg-gray-950 py-8 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
-        {/* Cabecera Principal y Controles */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8">
+        {/* Cabecera Principal y Controles - Añadido: dark:bg-gray-900 dark:border-gray-800 */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 mb-8 transition-colors">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             {/* Título e Info */}
             <div>
-              <h1 className="text-3xl font-black text-gray-900 tracking-tight">
+              {/* Añadido: dark:text-white */}
+              <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
                 Marketplace FUNVAL
               </h1>
-              <p className="text-gray-500 mt-1 text-sm font-medium">
+              {/* Añadido: dark:text-gray-400 */}
+              <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm font-medium">
                 Explora nuestra variedad de productos disponibles (
                 {filteredProducts.length}).
               </p>
+              {/* Botón que interactúa con el Contexto */}
+              <button
+                onClick={toggleTheme}
+                className="mt-3 px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 active:scale-95 transition-all shadow-md"
+              >
+                {theme === "light" ? "🌙 Modo Oscuro" : "☀️ Modo Claro"}
+              </button>
             </div>
 
             {/* Contenedor de Buscador y Filtro Desplegable */}
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
               {/* Buscador */}
               <div className="relative w-full sm:w-72">
+                {/* Añadido: dark:bg-gray-800 dark:border-gray-700 dark:text-white */}
                 <input
                   type="text"
                   placeholder="Buscar producto..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-gray-400 font-medium"
+                  className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 font-medium dark:text-white"
                 />
               </div>
 
               {/* Selector Desplegable de Categorías (Select) */}
               <div className="relative w-full sm:w-56">
+                {/* Añadido: dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 */}
                 <select
                   value={categoria}
                   onChange={(e) => cambiarCategoria(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer appearance-none capitalize"
+                  className="w-full px-4 py-2.5 bg-gray-50/50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer appearance-none capitalize"
                 >
                   {allCategories.map((category) => (
+                    /* Añadido: dark:bg-gray-800 dark:text-gray-200 */
                     <option
                       key={category}
                       value={category}
-                      className="capitalize text-gray-700 font-medium"
+                      className="capitalize text-gray-700 dark:text-gray-200 dark:bg-gray-800 font-medium"
                     >
-                      {category === "todas"
+                      {category === "Todas"
                         ? "📦 todas las categorías"
                         : category.replace("-", " / ")}
                     </option>
@@ -197,7 +212,8 @@ export function ProductsPage() {
 
         {/* Grid de Productos */}
         {filteredProducts.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-200 shadow-sm">
+          /* Añadido: dark:bg-gray-900 dark:border-gray-800 */
+          <div className="text-center py-16 bg-white dark:bg-gray-900 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 shadow-sm">
             <p className="text-gray-400 font-medium">
               No se encontraron productos en esta sección.
             </p>
@@ -215,12 +231,13 @@ export function ProductsPage() {
               ))}
             </div>
 
-            {/* Controles de Paginación Estilizados */}
-            <div className="flex justify-center items-center gap-4 mt-12 bg-white px-6 py-4 rounded-2xl border border-gray-100 shadow-sm max-w-xs mx-auto">
+            {/* Controles de Paginación Estilizados - Añadido: dark:bg-gray-900 dark:border-gray-800 */}
+            <div className="flex justify-center items-center gap-4 mt-12 bg-white dark:bg-gray-900 px-6 py-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm max-w-xs mx-auto transition-colors">
               <button
                 disabled={pagina === 1}
                 onClick={() => irAPagina(pagina - 1)}
-                className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all"
+                /* Añadido: dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-400 */
+                className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all"
                 aria-label="Página anterior"
               >
                 <svg
@@ -238,14 +255,16 @@ export function ProductsPage() {
                 </svg>
               </button>
 
-              <span className="text-sm font-semibold text-gray-700 tracking-wide min-w-[70px] text-center">
+              {/* Añadido: dark:text-gray-300 */}
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 tracking-wide min-w-[70px] text-center">
                 Pág. {pagina}
               </span>
 
               <button
                 disabled={!hayMas}
                 onClick={() => irAPagina(pagina + 1)}
-                className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all"
+                /* Añadido: dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-400 */
+                className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all"
                 aria-label="Página siguiente"
               >
                 <svg
